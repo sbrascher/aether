@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@ang
 import { FormsModule } from '@angular/forms';
 import { LibraryService } from './core/services/library.service';
 import { PlayerService } from './core/services/player.service';
+import { AboutComponent } from './features/about/about.component';
 import { HomeComponent } from './features/home/home.component';
 import { LibraryViewComponent } from './features/library-view/library-view.component';
 import { PlayerBarComponent } from './features/player-bar/player-bar.component';
@@ -21,6 +22,7 @@ import { IconComponent } from './shared/components/icon/icon.component';
     PlayerBarComponent,
     RightPanelComponent,
     SettingsComponent,
+    AboutComponent,
     IconComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -51,6 +53,8 @@ import { IconComponent } from './shared/components/icon/icon.component';
             <app-home />
           } @else if (library.activeView() === 'settings') {
             <app-settings />
+          } @else if (library.activeView() === 'about') {
+            <app-about />
           } @else {
             <app-library-view />
           }

@@ -20,8 +20,8 @@ interface NavItem {
       <div class="brand">
         <div class="brand-badge">AE</div>
         <div>
-          <div class="brand-title">AETHEREAL</div>
-          <div class="brand-sub">OFFLINE AUDIO REV 2.4</div>
+          <div class="brand-title">AETHER</div>
+          <div class="brand-sub">OFFLINE AUDIO</div>
         </div>
       </div>
 
@@ -287,6 +287,7 @@ export class SidebarComponent {
     { view: 'favorites', label: 'Curtidas', icon: 'favorite' },
     { view: 'history', label: 'Histórico', icon: 'history' },
     { view: 'settings', label: 'Configurações', icon: 'settings' },
+    { view: 'about', label: 'Sobre', icon: 'info' },
   ];
 
   async submitPlaylist(): Promise<void> {

@@ -63,7 +63,7 @@ export interface LrcLine {
 }
 
 export type RepeatMode = 'off' | 'all' | 'one';
-export type NavView = 'home' | 'tracks' | 'artists' | 'albums' | 'genres' | 'favorites' | 'history' | 'playlist' | 'settings';
+export type NavView = 'home' | 'tracks' | 'artists' | 'albums' | 'genres' | 'favorites' | 'history' | 'playlist' | 'settings' | 'about';
 
 export interface TrackQueryOpts {
   search?: string;

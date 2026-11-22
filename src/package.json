@@ -1,6 +1,8 @@
 {
   "name": "aethereal-player",
   "version": "1.0.0",
+  "description": "Aether - Player de musica privado e offline",
+  "author": "Sérgio Brascher",
   "main": "electron/main.cjs",
   "scripts": {
     "ng": "ng",
@@ -13,8 +15,8 @@
     "dist:win": "npm run build && electron-builder --win"
   },
   "build": {
-    "appId": "com.aethereal.musicplayer",
-    "productName": "Aethereal Music",
+    "appId": "com.sergiobrascher.aether",
+    "productName": "Aether",
     "directories": {
       "output": "../release"
     },
