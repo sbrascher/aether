@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { app, BrowserWindow, dialog, ipcMain } = require('electron');
 const db = require('./db.cjs');
+const { importFolder } = require('./importer.cjs');
 const { loadConfig, saveConfig } = require('./config.cjs');
 const { registerMediaScheme, registerMediaHandler, setMediaDataDir } = require('./media-protocol.cjs');
 
@@ -13,7 +14,10 @@ function resolveDefaultDataDir() {
     path.join(path.dirname(app.getPath('exe')), 'data'),
     'D:\\Musicas\\data',
   ];
-  return candidates.find((dir) => fs.existsSync(path.join(dir, 'library.db'))) || candidates[0];
+  return (
+    candidates.find((dir) => fs.existsSync(path.join(dir, 'library.db'))) ||
+    path.join(app.getPath('userData'), 'data')
+  );
 }
 
 const isDev = process.argv.includes('--dev');
@@ -44,6 +48,19 @@ function registerIpcHandlers() {
     db.initDb(dbFile);
     setMediaDataDir(currentDataDir);
     return { changed: true, dataDir: currentDataDir };
+  });
+
+  ipcMain.handle('app:importFolder', async () => {
+    const res = await dialog.showOpenDialog(mainWindow, {
+      title: 'Selecionar pasta com músicas para importar',
+      properties: ['openDirectory'],
+    });
+    if (res.canceled || !res.filePaths.length) {
+      return { canceled: true, totalFound: 0, imported: 0, skipped: 0 };
+    }
+    return importFolder(res.filePaths[0], currentDataDir, (progress) => {
+      mainWindow?.webContents.send('import:progress', progress);
+    });
   });
 
   ipcMain.handle('db:stats', () => db.getLibraryStats());

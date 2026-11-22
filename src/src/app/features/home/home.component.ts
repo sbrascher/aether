@@ -43,7 +43,10 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
       <section class="block">
         <div class="block-head">
           <h2>Destaques & Mais Tocadas</h2>
-          <button class="link-btn" (click)="library.navigate('tracks')">Ver todas</button>
+          <div class="head-actions">
+            <button class="link-btn" (click)="library.importFolder()">+ Importar músicas</button>
+            <button class="link-btn" (click)="library.navigate('tracks')">Ver todas</button>
+          </div>
         </div>
         <div class="cards-grid">
           @for (track of library.topPlayed(); track track.track_uid) {
@@ -147,6 +150,10 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
       align-items: center;
       justify-content: space-between;
       margin-bottom: 14px;
+    }
+    .head-actions {
+      display: flex;
+      gap: 16px;
     }
     h2 {
       margin: 0;

@@ -34,6 +34,36 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
           <span>Alterar pasta...</span>
         </button>
       </section>
+      <section class="card">
+        <div class="card-info">
+          <div class="card-title">IMPORTAR MÚSICAS PARA A BIBLIOTECA</div>
+          <p class="card-desc">
+            Selecione uma pasta com seus arquivos (<code>.mp3</code>, <code>.m4a</code>, <code>.ogg</code>, <code>.wav</code>, <code>.flac</code>).
+            O Aether copia as faixas para <code>data\tracks\</code>, extrai capas e indexa tudo no SQLite.
+          </p>
+
+          @if (library.importing() && library.importProgress(); as p) {
+            <div class="progress-wrap">
+              <div class="progress-meta">
+                <span>{{ p.filename }}</span>
+                <span>{{ p.current }} / {{ p.total }}</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-fill" [style.width.%]="(p.current / (p.total || 1)) * 100"></div>
+              </div>
+            </div>
+          }
+
+          @if (importMsg()) {
+            <div class="status-msg">{{ importMsg() }}</div>
+          }
+        </div>
+
+        <button class="action-btn brass" [disabled]="library.importing()" (click)="runImport()">
+          <app-icon name="library_add" [size]="18" />
+          <span>{{ library.importing() ? 'Importando...' : 'Importar pasta...' }}</span>
+        </button>
+      </section>
     </div>
   `,
   styles: [`
@@ -123,11 +153,54 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
       cursor: pointer;
       white-space: nowrap;
     }
+    .action-btn.brass {
+      border-color: var(--border-brass);
+      background: var(--accent-brass-dim);
+      color: var(--accent-brass);
+      box-shadow: none;
+    }
+    .action-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .progress-wrap {
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+      gap: 12px;
+    }
+    .progress-meta span:first-child {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .progress-bar {
+      height: 6px;
+      border-radius: var(--radius-pill);
+      background: rgba(9, 19, 24, 0.9);
+      border: 1px solid var(--border-subtle);
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--accent-cyan);
+      box-shadow: var(--accent-cyan-glow);
+      transition: width 0.12s;
+    }
   `],
 })
 export class SettingsComponent {
   readonly library = inject(LibraryService);
   readonly statusMsg = signal('');
+  readonly importMsg = signal('');
   readonly isError = signal(false);
 
   async pickFolder(): Promise<void> {
@@ -139,6 +212,16 @@ export class SettingsComponent {
     } else if (res.changed) {
       this.isError.set(false);
       this.statusMsg.set('Pasta de dados atualizada e biblioteca recarregada!');
+    }
+  }
+
+  async runImport(): Promise<void> {
+    this.importMsg.set('');
+    const res = await this.library.importFolder();
+    if (!res.canceled) {
+      this.importMsg.set(
+        `Concluído: ${res.imported} faixa(s) importada(s), ${res.skipped} ignorada(s)/já existente(s).`,
+      );
     }
   }
 }

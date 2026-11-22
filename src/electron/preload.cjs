@@ -3,6 +3,12 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('musicApi', {
   getDataDir: () => ipcRenderer.invoke('app:getDataDir'),
   selectDataDir: () => ipcRenderer.invoke('app:selectDataDir'),
+  importFolder: () => ipcRenderer.invoke('app:importFolder'),
+  onImportProgress: (cb) => {
+    const listener = (_e, data) => cb(data);
+    ipcRenderer.on('import:progress', listener);
+    return () => ipcRenderer.removeListener('import:progress', listener);
+  },
   getStats: () => ipcRenderer.invoke('db:stats'),
   queryTracks: (opts) => ipcRenderer.invoke('db:tracks', opts),
   getArtists: () => ipcRenderer.invoke('db:artists'),

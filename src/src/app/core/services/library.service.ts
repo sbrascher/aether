@@ -3,6 +3,8 @@ import {
   AlbumSummary,
   ArtistSummary,
   GenreSummary,
+  ImportProgress,
+  ImportResult,
   LibraryStats,
   NavView,
   Playlist,
@@ -27,6 +29,8 @@ export class LibraryService {
   readonly activeFilter = signal<{ artist?: string; album?: string; genre?: string }>({});
   readonly dataDir = signal('');
   readonly loading = signal(false);
+  readonly importing = signal(false);
+  readonly importProgress = signal<ImportProgress | null>(null);
 
   private get api() {
     return window.musicApi;
@@ -56,6 +60,25 @@ export class LibraryService {
       await this.init();
     }
     return res;
+  }
+
+  async importFolder(): Promise<ImportResult> {
+    if (!this.api || this.importing()) {
+      return { canceled: true, totalFound: 0, imported: 0, skipped: 0 };
+    }
+    this.importing.set(true);
+    this.importProgress.set(null);
+    const unsubscribe = this.api.onImportProgress((p) => this.importProgress.set(p));
+    try {
+      const res = await this.api.importFolder();
+      if (!res.canceled) {
+        await this.init();
+      }
+      return res;
+    } finally {
+      unsubscribe();
+      this.importing.set(false);
+    }
   }
 
   async navigate(view: NavView, filter: { artist?: string; album?: string; genre?: string } = {}): Promise<void> {

@@ -13,7 +13,7 @@ Desenvolvido por **Sérgio Brascher**.
 - **Letras & Modo Sincronizado (`LRC`):** exibição de letras simples e letras sincronizadas acompanhando o tempo da faixa (clicáveis para pular para o trecho).
 - **Playlists, Favoritos & Fila:** criação/edição de playlists no SQLite, músicas curtidas, fila de reprodução, *shuffle*, *repeat* e suporte a teclas multimídia (`MediaSession API`).
 - **Histórico & Retomada Automática:** registra o histórico de reprodução (`play_history`) e restaura a última faixa, posição do áudio, fila e volume ao fechar e reabrir o app.
-- **Pasta de Dados Configurável:** altere o diretório da biblioteca (`library.db`, `tracks/`, `covers/`) diretamente na aba **Configurações**.
+- **Pasta de Dados Configurável & Importador Integrado:** importe qualquer pasta de músicas (`.mp3`, `.m4a`, `.ogg`, `.wav`, `.flac`) direto pela interface (**Configurações → Importar pasta...** ou **+ Importar músicas** na tela inicial) — o Aether cria o `library.db` automaticamente, extrai tags/capas e indexa tudo no `FTS5`.
 
 ---
 

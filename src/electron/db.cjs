@@ -1,3 +1,5 @@
+const fs = require('node:fs');
+const path = require('node:path');
 const { DatabaseSync } = require('node:sqlite');
 
 let db = null;
@@ -10,16 +12,68 @@ function initDb(dbPath) {
       // ignore close error
     }
   }
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   db = new DatabaseSync(dbPath);
   db.exec('PRAGMA journal_mode = WAL');
   db.exec('PRAGMA foreign_keys = ON');
   db.exec(`
+    CREATE TABLE IF NOT EXISTS tracks (
+      track_uid TEXT PRIMARY KEY,
+      file_path TEXT NOT NULL UNIQUE,
+      cover_path TEXT,
+      title TEXT NOT NULL,
+      artist TEXT NOT NULL,
+      album TEXT NOT NULL,
+      genre TEXT NOT NULL,
+      year TEXT,
+      track_number INTEGER,
+      duration_sec REAL,
+      bitrate INTEGER,
+      sample_rate INTEGER,
+      ext TEXT NOT NULL,
+      size_bytes INTEGER NOT NULL,
+      lyrics TEXT,
+      synced_lyrics TEXT,
+      play_count INTEGER DEFAULT 0,
+      is_favorite INTEGER DEFAULT 0,
+      original_rel_path TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_tracks_artist ON tracks(artist);
+    CREATE INDEX IF NOT EXISTS idx_tracks_album ON tracks(album);
+    CREATE INDEX IF NOT EXISTS idx_tracks_genre ON tracks(genre);
+
+    CREATE TABLE IF NOT EXISTS playlists (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS playlist_tracks (
+      playlist_id INTEGER NOT NULL,
+      track_uid TEXT NOT NULL,
+      position INTEGER NOT NULL,
+      PRIMARY KEY (playlist_id, track_uid),
+      FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE,
+      FOREIGN KEY (track_uid) REFERENCES tracks(track_uid) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS play_history (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       track_uid TEXT NOT NULL,
       played_at TEXT DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_play_history_at ON play_history(played_at DESC);
+
+    CREATE VIRTUAL TABLE IF NOT EXISTS tracks_fts USING fts5(
+      track_uid UNINDEXED,
+      title,
+      artist,
+      album,
+      genre,
+      lyrics
+    );
   `);
   return db;
 }
@@ -227,6 +281,33 @@ function removeTrackFromPlaylist(playlistId, trackUid) {
   return { removed: true };
 }
 
+function trackExists(trackUid) {
+  return Boolean(db.prepare('SELECT 1 FROM tracks WHERE track_uid = ?').get(trackUid));
+}
+
+function insertTrack(track) {
+  db.prepare(`
+    INSERT OR IGNORE INTO tracks (
+      track_uid, file_path, cover_path, title, artist, album, genre, year,
+      track_number, duration_sec, bitrate, sample_rate, ext, size_bytes,
+      lyrics, original_rel_path
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    track.track_uid, track.file_path, track.cover_path, track.title,
+    track.artist, track.album, track.genre, track.year, track.track_number,
+    track.duration_sec, track.bitrate, track.sample_rate, track.ext,
+    track.size_bytes, track.lyrics, track.original_rel_path,
+  );
+}
+
+function rebuildFts() {
+  db.exec('DELETE FROM tracks_fts');
+  db.exec(`
+    INSERT INTO tracks_fts (track_uid, title, artist, album, genre, lyrics)
+    SELECT track_uid, title, artist, album, genre, COALESCE(lyrics, '') FROM tracks
+  `);
+}
+
 module.exports = {
   initDb,
   getLibraryStats,
@@ -245,4 +326,7 @@ module.exports = {
   getPlaylistTracks,
   addTrackToPlaylist,
   removeTrackFromPlaylist,
+  trackExists,
+  insertTrack,
+  rebuildFts,
 };

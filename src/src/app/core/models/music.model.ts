@@ -76,9 +76,26 @@ export interface TrackQueryOpts {
   offset?: number;
 }
 
+export interface ImportProgress {
+  current: number;
+  total: number;
+  imported: number;
+  skipped: number;
+  filename: string;
+}
+
+export interface ImportResult {
+  canceled: boolean;
+  totalFound: number;
+  imported: number;
+  skipped: number;
+}
+
 export interface MusicApi {
   getDataDir(): Promise<string>;
   selectDataDir(): Promise<{ changed: boolean; dataDir?: string; error?: string }>;
+  importFolder(): Promise<ImportResult>;
+  onImportProgress(cb: (progress: ImportProgress) => void): () => void;
   getStats(): Promise<LibraryStats>;
   queryTracks(opts: TrackQueryOpts): Promise<{ items: Track[]; total: number }>;
   getArtists(): Promise<ArtistSummary[]>;
