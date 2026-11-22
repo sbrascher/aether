@@ -1,0 +1,26 @@
+# Dados locais e acervo de músicas (nunca versionar)
+data/
+Outros_Arquivos_e_Videos/
+*.mp3
+*.wma
+*.m4a
+*.wav
+*.ogg
+*.flac
+*.aac
+*.db
+*.db-wal
+*.db-shm
+
+# Builds e dependências
+release/
+src/node_modules/
+src/dist/
+src/.angular/
+src/.vscode/
+
+# Logs e sistema
+*.log
+Thumbs.db
+desktop.ini
+.DS_Store
