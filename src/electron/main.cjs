@@ -3,6 +3,7 @@ const path = require('node:path');
 const { app, BrowserWindow, dialog, ipcMain } = require('electron');
 const db = require('./db.cjs');
 const { importFolder } = require('./importer.cjs');
+const { testCli, runAiTask } = require('./ai-harness.cjs');
 const { loadConfig, saveConfig } = require('./config.cjs');
 const { registerMediaScheme, registerMediaHandler, setMediaDataDir } = require('./media-protocol.cjs');
 
@@ -22,6 +23,7 @@ function resolveDefaultDataDir() {
 
 const isDev = process.argv.includes('--dev');
 let currentDataDir = '';
+let currentAiConfig = { enabled: false, provider: 'agy', customCmd: '' };
 let mainWindow = null;
 
 function registerIpcHandlers() {
@@ -62,6 +64,17 @@ function registerIpcHandlers() {
       mainWindow?.webContents.send('import:progress', progress);
     });
   });
+
+  ipcMain.handle('ai:getConfig', () => currentAiConfig);
+  ipcMain.handle('ai:saveConfig', (_e, nextCfg) => {
+    currentAiConfig = { ...currentAiConfig, ...nextCfg };
+    saveConfig(app.getPath('userData'), { ai: currentAiConfig });
+    return currentAiConfig;
+  });
+  ipcMain.handle('ai:testCli', (_e, provider, customCmd) => testCli(provider, customCmd));
+  ipcMain.handle('ai:runTask', (_e, payload) =>
+    runAiTask({ ...payload, dataDir: currentDataDir, aiConfig: currentAiConfig }),
+  );
 
   ipcMain.handle('db:stats', () => db.getLibraryStats());
   ipcMain.handle('db:tracks', (_e, opts) => db.queryTracks(opts));
@@ -112,6 +125,7 @@ function createMainWindow() {
 app.whenReady().then(() => {
   const cfg = loadConfig(app.getPath('userData'), resolveDefaultDataDir());
   currentDataDir = cfg.dataDir;
+  currentAiConfig = cfg.ai;
   db.initDb(path.join(currentDataDir, 'library.db'));
   registerMediaHandler(currentDataDir);
   registerIpcHandlers();

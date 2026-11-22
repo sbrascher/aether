@@ -300,6 +300,37 @@ function insertTrack(track) {
   );
 }
 
+function getTrackByUid(trackUid) {
+  return db.prepare('SELECT * FROM tracks WHERE track_uid = ?').get(trackUid);
+}
+
+function updateTrackFields(trackUid, fields) {
+  const allowed = ['title', 'artist', 'album', 'genre', 'year', 'lyrics', 'synced_lyrics', 'cover_path'];
+  const entries = Object.entries(fields).filter(([k, v]) => allowed.includes(k) && v !== undefined);
+  if (!entries.length) return getTrackByUid(trackUid);
+
+  const sets = entries.map(([k]) => `${k} = ?`).join(', ');
+  const vals = entries.map(([, v]) => v);
+  db.prepare(`UPDATE tracks SET ${sets} WHERE track_uid = ?`).run(...vals, trackUid);
+
+  const updated = getTrackByUid(trackUid);
+  if (updated) {
+    db.prepare('DELETE FROM tracks_fts WHERE track_uid = ?').run(trackUid);
+    db.prepare(`
+      INSERT INTO tracks_fts (track_uid, title, artist, album, genre, lyrics)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(
+      updated.track_uid,
+      updated.title,
+      updated.artist,
+      updated.album,
+      updated.genre,
+      updated.lyrics || '',
+    );
+  }
+  return updated;
+}
+
 function rebuildFts() {
   db.exec('DELETE FROM tracks_fts');
   db.exec(`
@@ -327,6 +358,8 @@ module.exports = {
   addTrackToPlaylist,
   removeTrackFromPlaylist,
   trackExists,
+  getTrackByUid,
+  updateTrackFields,
   insertTrack,
   rebuildFts,
 };

@@ -4,6 +4,10 @@ contextBridge.exposeInMainWorld('musicApi', {
   getDataDir: () => ipcRenderer.invoke('app:getDataDir'),
   selectDataDir: () => ipcRenderer.invoke('app:selectDataDir'),
   importFolder: () => ipcRenderer.invoke('app:importFolder'),
+  getAiConfig: () => ipcRenderer.invoke('ai:getConfig'),
+  saveAiConfig: (cfg) => ipcRenderer.invoke('ai:saveConfig', cfg),
+  testAiCli: (provider, customCmd) => ipcRenderer.invoke('ai:testCli', provider, customCmd),
+  runAiTask: (trackUid, task) => ipcRenderer.invoke('ai:runTask', { trackUid, task }),
   onImportProgress: (cb) => {
     const listener = (_e, data) => cb(data);
     ipcRenderer.on('import:progress', listener);

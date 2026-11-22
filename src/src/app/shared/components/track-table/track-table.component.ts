@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
-import { Playlist, Track } from '../../../core/models/music.model';
+import { AiTaskType, Playlist, Track } from '../../../core/models/music.model';
 import { LibraryService } from '../../../core/services/library.service';
 import { PlayerService } from '../../../core/services/player.service';
 import { formatDuration } from '../../../core/utils/format.util';
@@ -66,6 +66,26 @@ import { IconComponent } from '../icon/icon.component';
             <button class="icon-btn" (click)="player.addToQueue(track)" title="Adicionar à fila">
               <app-icon name="queue_music" [size]="18" />
             </button>
+
+            @if (library.aiConfig().enabled) {
+              <div class="pl-menu-wrap">
+                <button
+                  class="icon-btn"
+                  [disabled]="library.aiBusyTrackUid() === track.track_uid"
+                  (click)="toggleAiMenu(track.track_uid)"
+                  title="Assistente de IA"
+                >
+                  <app-icon name="auto_awesome" [size]="18" />
+                </button>
+                @if (openAiFor() === track.track_uid) {
+                  <div class="pl-dropdown">
+                    <button (click)="runAi(track.track_uid, 'identify')">Identificar faixa</button>
+                    <button (click)="runAi(track.track_uid, 'lyrics')">Gerar letra</button>
+                    <button (click)="runAi(track.track_uid, 'cover')">Buscar capa</button>
+                  </div>
+                }
+              </div>
+            }
 
             @if (playlistMode()) {
               <button
@@ -270,6 +290,7 @@ export class TrackTableComponent {
   readonly playlistMode = input<boolean>(false);
   readonly playlists = this.library.playlists;
   readonly openMenuFor = signal<string | null>(null);
+  readonly openAiFor = signal<string | null>(null);
 
   fmt(sec: number | null): string {
     return formatDuration(sec);
@@ -280,7 +301,18 @@ export class TrackTableComponent {
   }
 
   toggleMenu(uid: string): void {
+    this.openAiFor.set(null);
     this.openMenuFor.update((cur) => (cur === uid ? null : uid));
+  }
+
+  toggleAiMenu(uid: string): void {
+    this.openMenuFor.set(null);
+    this.openAiFor.update((cur) => (cur === uid ? null : uid));
+  }
+
+  async runAi(uid: string, task: AiTaskType): Promise<void> {
+    this.openAiFor.set(null);
+    await this.library.runAiTask(uid, task);
   }
 
   async addToPlaylist(pl: Playlist, uid: string): Promise<void> {

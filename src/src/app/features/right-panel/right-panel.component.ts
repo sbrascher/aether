@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
+import { LibraryService } from '../../core/services/library.service';
 import { PlayerService } from '../../core/services/player.service';
 import { formatDuration } from '../../core/utils/format.util';
 import { CoverArtComponent } from '../../shared/components/cover-art/cover-art.component';
@@ -43,6 +44,19 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
             <div class="empty-msg">
               <app-icon name="lyrics" [size]="36" />
               <p>Sem letra disponível para esta faixa.</p>
+              @if (library.aiConfig().enabled && player.currentTrack(); as cur) {
+                <button
+                  class="ai-btn"
+                  [disabled]="library.aiBusyTrackUid() === cur.track_uid"
+                  (click)="generateLyrics(cur.track_uid)"
+                >
+                  <app-icon name="auto_awesome" [size]="16" />
+                  <span>{{ library.aiBusyTrackUid() === cur.track_uid ? 'Consultando IA...' : 'Gerar letra com IA' }}</span>
+                </button>
+                @if (aiError()) {
+                  <p class="ai-err">{{ aiError() }}</p>
+                }
+              }
             </div>
           }
         } @else {
@@ -202,15 +216,46 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
       color: var(--text-muted);
       font-size: 13px;
     }
+    .ai-btn {
+      margin-top: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-active);
+      background: var(--accent-cyan-dim);
+      color: var(--accent-cyan);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .ai-err {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #e06c75;
+    }
   `],
 })
 export class RightPanelComponent {
   readonly player = inject(PlayerService);
+  readonly library = inject(LibraryService);
   readonly tab = input.required<'lyrics' | 'queue'>();
   readonly tabChange = output<'lyrics' | 'queue'>();
   readonly close = output<void>();
+  readonly aiError = signal('');
 
   fmt(sec: number | null): string {
     return formatDuration(sec);
+  }
+
+  async generateLyrics(uid: string): Promise<void> {
+    this.aiError.set('');
+    const res = await this.library.runAiTask(uid, 'lyrics');
+    if (res.ok && res.track) {
+      this.player.currentTrack.set(res.track);
+    } else if (res.error) {
+      this.aiError.set(res.error);
+    }
   }
 }

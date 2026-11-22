@@ -1,5 +1,9 @@
 import { Injectable, signal } from '@angular/core';
 import {
+  AiConfig,
+  AiProvider,
+  AiTaskResult,
+  AiTaskType,
   AlbumSummary,
   ArtistSummary,
   GenreSummary,
@@ -28,9 +32,11 @@ export class LibraryService {
   readonly searchQuery = signal('');
   readonly activeFilter = signal<{ artist?: string; album?: string; genre?: string }>({});
   readonly dataDir = signal('');
+  readonly aiConfig = signal<AiConfig>({ enabled: false, provider: 'agy', customCmd: '' });
   readonly loading = signal(false);
   readonly importing = signal(false);
   readonly importProgress = signal<ImportProgress | null>(null);
+  readonly aiBusyTrackUid = signal<string | null>(null);
 
   private get api() {
     return window.musicApi;
@@ -38,14 +44,16 @@ export class LibraryService {
 
   async init(): Promise<void> {
     if (!this.api) return;
-    const [dataDir, stats, playlists, topPlayed, genres] = await Promise.all([
+    const [dataDir, aiCfg, stats, playlists, topPlayed, genres] = await Promise.all([
       this.api.getDataDir(),
+      this.api.getAiConfig(),
       this.api.getStats(),
       this.api.getPlaylists(),
       this.api.getTopPlayed(12),
       this.api.getGenres(),
     ]);
     this.dataDir.set(dataDir);
+    this.aiConfig.set(aiCfg);
     this.stats.set(stats);
     this.playlists.set(playlists);
     this.topPlayed.set(topPlayed);
@@ -78,6 +86,35 @@ export class LibraryService {
     } finally {
       unsubscribe();
       this.importing.set(false);
+    }
+  }
+
+  async saveAiConfig(cfg: Partial<AiConfig>): Promise<void> {
+    if (!this.api) return;
+    const saved = await this.api.saveAiConfig(cfg);
+    this.aiConfig.set(saved);
+  }
+
+  async testAiCli(provider: AiProvider, customCmd: string): Promise<{ ok: boolean; version?: string; error?: string }> {
+    if (!this.api) return { ok: false, error: 'API indisponível.' };
+    return this.api.testAiCli(provider, customCmd);
+  }
+
+  async runAiTask(trackUid: string, task: AiTaskType): Promise<AiTaskResult> {
+    if (!this.api) return { ok: false, error: 'API indisponível.' };
+    this.aiBusyTrackUid.set(trackUid);
+    try {
+      const res = await this.api.runAiTask(trackUid, task);
+      if (res.ok && res.track) {
+        const updated = res.track;
+        const patch = (list: Track[]) =>
+          list.map((t) => (t.track_uid === trackUid ? updated : t));
+        this.tracks.update(patch);
+        this.topPlayed.update(patch);
+      }
+      return res;
+    } finally {
+      this.aiBusyTrackUid.set(null);
     }
   }
 

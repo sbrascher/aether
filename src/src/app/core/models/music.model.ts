@@ -91,11 +91,30 @@ export interface ImportResult {
   skipped: number;
 }
 
+export type AiProvider = 'agy' | 'claude' | 'codex' | 'copilot' | 'custom';
+export type AiTaskType = 'identify' | 'lyrics' | 'cover';
+
+export interface AiConfig {
+  enabled: boolean;
+  provider: AiProvider;
+  customCmd: string;
+}
+
+export interface AiTaskResult {
+  ok: boolean;
+  track?: Track;
+  error?: string;
+}
+
 export interface MusicApi {
   getDataDir(): Promise<string>;
   selectDataDir(): Promise<{ changed: boolean; dataDir?: string; error?: string }>;
   importFolder(): Promise<ImportResult>;
   onImportProgress(cb: (progress: ImportProgress) => void): () => void;
+  getAiConfig(): Promise<AiConfig>;
+  saveAiConfig(cfg: Partial<AiConfig>): Promise<AiConfig>;
+  testAiCli(provider: AiProvider, customCmd?: string): Promise<{ ok: boolean; version?: string; error?: string }>;
+  runAiTask(trackUid: string, task: AiTaskType): Promise<AiTaskResult>;
   getStats(): Promise<LibraryStats>;
   queryTracks(opts: TrackQueryOpts): Promise<{ items: Track[]; total: number }>;
   getArtists(): Promise<ArtistSummary[]>;

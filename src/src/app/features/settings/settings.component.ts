@@ -1,11 +1,13 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { AiProvider } from '../../core/models/music.model';
 import { LibraryService } from '../../core/services/library.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [IconComponent],
+  imports: [FormsModule, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="settings-wrap">
@@ -63,6 +65,65 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
           <app-icon name="library_add" [size]="18" />
           <span>{{ library.importing() ? 'Importando...' : 'Importar pasta...' }}</span>
         </button>
+      </section>
+
+      <section class="card">
+        <div class="card-info">
+          <div class="card-title">ASSISTENTE DE IA VIA CLI (OPCIONAL)</div>
+          <p class="card-desc">
+            Usa uma ferramenta CLI já logada no seu computador (sem API key no app) para identificar músicas sem nome, gerar letras ou buscar capas.
+          </p>
+
+          <label class="toggle-row">
+            <input
+              type="checkbox"
+              [checked]="library.aiConfig().enabled"
+              (change)="toggleAi($event)"
+            />
+            <span>Habilitar recursos de IA</span>
+          </label>
+
+          @if (library.aiConfig().enabled) {
+            <div class="ai-fields">
+              <label class="field-lbl">
+                <span>PROVEDOR CLI</span>
+                <select
+                  [ngModel]="library.aiConfig().provider"
+                  (ngModelChange)="onProviderChange($event)"
+                >
+                  <option value="agy">Antigravity CLI (agy)</option>
+                  <option value="claude">Claude Code CLI (claude)</option>
+                  <option value="codex">OpenAI Codex CLI (codex)</option>
+                  <option value="copilot">GitHub Copilot CLI (copilot)</option>
+                  <option value="custom">Comando customizado</option>
+                </select>
+              </label>
+
+              @if (library.aiConfig().provider === 'custom') {
+                <label class="field-lbl">
+                  <span>COMANDO BASE (o prompt é passado como argumento final)</span>
+                  <input
+                    type="text"
+                    [ngModel]="library.aiConfig().customCmd"
+                    (ngModelChange)="onCustomCmdChange($event)"
+                    placeholder="Ex: meu-cli -p"
+                  />
+                </label>
+              }
+            </div>
+          }
+
+          @if (aiStatus()) {
+            <div class="status-msg" [class.error]="aiError()">{{ aiStatus() }}</div>
+          }
+        </div>
+
+        @if (library.aiConfig().enabled) {
+          <button class="action-btn" (click)="testCli()">
+            <app-icon name="terminal" [size]="18" />
+            <span>Testar CLI</span>
+          </button>
+        }
       </section>
     </div>
   `,
@@ -195,6 +256,49 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
       box-shadow: var(--accent-cyan-glow);
       transition: width 0.12s;
     }
+    .toggle-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+    .toggle-row input {
+      accent-color: var(--accent-cyan);
+      width: 16px;
+      height: 16px;
+    }
+    .ai-fields {
+      margin-top: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .field-lbl {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+    }
+    .field-lbl select,
+    .field-lbl input {
+      background: rgba(9, 19, 24, 0.85);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      padding: 8px 10px;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      outline: none;
+    }
+    .field-lbl select:focus,
+    .field-lbl input:focus {
+      border-color: var(--border-active);
+    }
   `],
 })
 export class SettingsComponent {
@@ -202,6 +306,8 @@ export class SettingsComponent {
   readonly statusMsg = signal('');
   readonly importMsg = signal('');
   readonly isError = signal(false);
+  readonly aiStatus = signal('');
+  readonly aiError = signal(false);
 
   async pickFolder(): Promise<void> {
     this.statusMsg.set('');
@@ -222,6 +328,34 @@ export class SettingsComponent {
       this.importMsg.set(
         `Concluído: ${res.imported} faixa(s) importada(s), ${res.skipped} ignorada(s)/já existente(s).`,
       );
+    }
+  }
+
+  async toggleAi(event: Event): Promise<void> {
+    const enabled = (event.target as HTMLInputElement).checked;
+    await this.library.saveAiConfig({ enabled });
+  }
+
+  async onProviderChange(provider: AiProvider): Promise<void> {
+    this.aiStatus.set('');
+    await this.library.saveAiConfig({ provider });
+  }
+
+  async onCustomCmdChange(customCmd: string): Promise<void> {
+    await this.library.saveAiConfig({ customCmd });
+  }
+
+  async testCli(): Promise<void> {
+    this.aiStatus.set('Testando...');
+    this.aiError.set(false);
+    const cfg = this.library.aiConfig();
+    const res = await this.library.testAiCli(cfg.provider, cfg.customCmd);
+    if (res.ok) {
+      this.aiError.set(false);
+      this.aiStatus.set(`CLI OK: ${res.version}`);
+    } else {
+      this.aiError.set(true);
+      this.aiStatus.set(res.error || 'Falha ao testar CLI.');
     }
   }
 }
